@@ -1,63 +1,90 @@
 from math import gcd
 from random import choice
 
-def Diagonais(vertices, parcial=False, duplas=1):
+def Diagonais(vertices):
     """
     Gera um conjunto com todas as diagonais de um polígono
     Essa função é eficiente, não gera nenhuma possibilidade a mais
     """
     diagonais = set()
-    for destino in range(2, vertices - 1):
-        diagonais.add(frozenset([0 , destino]))
-    for origem in range(1, vertices - 2):
-        for destino in range(origem + 2, vertices):
-            diagonais.add(frozenset([origem, destino]))
-    if parcial:
-        for dupla in range(duplas, int(vertices / 2)):
-            diagonais.discard({dupla, (dupla + (vertices / 2)) % vertices})
+    for fim in range(2, vertices - 1):
+        diagonais.add(frozenset([0 , fim]))
+    for inicio in range(1, vertices - 2):
+        for fim in range(inicio + 2, vertices):
+            diagonais.add(frozenset([inicio, fim]))
     return diagonais
 
-def CiclosDiagonais(vertices):
+def DiagonaisEmCiclos(quantidadeVertices):
     """
-    Gera todos ciclos correspondentes as diagonais
-    Ex com 6:
+    Gera todas as diagonais por ciclos, cada ciclo tem um intervalo diferente
     {2: {0: [0, 2, 4, 0], 1: [1, 3, 5, 1]}, 3: {0: [0, 3], 1: [1, 4], 2: [2, 5]}}
     """
     diagonais = {}
-    for gerador in range(2, int(vertices / 2) + 1):
+    #são necessarios ciclos de dois até diagonal divido por dois
+    for gerador in range(2, int(quantidadeVertices / 2) + 1):
         diagonais.setdefault(gerador, {})
-        for rotacao in range(gcd(vertices,gerador)):
+        #cada ciclo vai aparecer mdc de vertices e gerador vezes, cada vez começando de inicio mais um
+        for rotacao in range(gcd(quantidadeVertices, gerador)):
             ciclo = []
-            for indiceciclo in range(0 , int(vertices / gcd(vertices,gerador))):
-                ciclo.append((rotacao + (indiceciclo * gerador)) % vertices)
+            #incide de cada numero no ciclo
+            for indiceciclo in range(0 , int(quantidadeVertices / gcd(quantidadeVertices, gerador))):
+                #operacao para ter o intervalo certo entre os numeros
+                ciclo.append((rotacao + (indiceciclo * gerador)) % quantidadeVertices)
             if len(ciclo) > 2:
+                #qualquer ciclo maior que dois vai terminar onde comecou
+                #tamanho dois voltar para o inicio seria uma repetição da diagonal
                 ciclo.append(rotacao)
             diagonais[gerador].setdefault(rotacao, ciclo)
     return diagonais
 
-def VerticesPossibilidades(vertices, parcial=False, duplas=1):
+def DiagonaisRepetidasParaGrafoCaminhavel(vertices):
+    """
+    gera um dicionario com as diagonais que devem ser repetidas para tornar o grafo das diagonais de um polígono par caminhável
+    inicio do caminho é sempre zero e no dicionario existem os fins até metade da quantidade de vértices, o que cobre todas as simetrias
+    """
+    finsErepeticoes = {}
+    listateste = []
+    #as diagonais repetidas são um subconjunto das permutações dos vértices menos o de inicio e o de fim
+    for fim in range(1, int(vertices / 2) + 1):
+        #gera lista com os vertices menos o de inicio e o de fim
+        verticeslistados = [i for i in range(vertices) if i != 0 and i != fim]
+        #gera permutações dessa lista e guarda somente as que começam no primeiro vertice
+        verticesPerm = [i for i in perm(verticeslistados) if i[0] == verticeslistados[0]]
+
+        #as permutações que formam as diagonais repetidas são as em ordem crescente a cada dois e sem sequenciais a cada um
+        RepetiçõesInicioFim = []
+        for permutacao in verticesPerm:
+            DoisEmDois = []
+            for i in range(0, len(verticeslistados) - 1, 2):
+                #se contém numeros sequencias ou se os primeiros de cada dupla não estão em ordem crescente encerra
+                if permutacao[i + 1] <= permutacao[i] + 1 or (i > 1 and permutacao[i - 2] > permutacao[i]):
+                    break
+                #divide as permutações em listas de dois em dois números
+                DoisEmDois.append(permutacao[i: i + 2])
+            else:
+                #só acrescenta se todos os numeros da permutação atenderem aos critérios
+                RepetiçõesInicioFim.append(DoisEmDois)
+        #acrescenta a um dicionario, a chave é a diagonal de fim, a de inicio é sempre 0
+        finsErepeticoes.update({fim: RepetiçõesInicioFim})
+    return finsErepeticoes
+
+
+def GrafoVerticesEDiagonais(quantidadeVertices):
     """
     Gera um grafo mostrando para cada vertices com quais outros vertices ele pode ser ligado para formar uma diagonal
     """
-    graph = []
-    for vertice in range(vertices):
-        possibilities = []
-        for diagonal in range(vertice + 2, vertice + 2 + vertices - 3):
-            possibilities += [diagonal % vertices]
-        graph += [possibilities]
+    grafo = []
+    for vertice in range(quantidadeVertices):
+        diagonaisDoVertices = []
+        for diagonal in range(vertice + 2, vertice + 2 + quantidadeVertices - 3):
+            diagonaisDoVertices += [diagonal % quantidadeVertices]
+        grafo += [diagonaisDoVertices]
+    return grafo
 
-    if parcial:
-        assert (vertices % 2) == 0, f'Grafos parciais são para uma quatidade par de vértices, recebido {vertices} vertices' 
-        assert duplas < vertices / 2, f'duplas deve ser < vertices / 2 para grafos parciais, vertices: {vertices}, duplas: {duplas}'
-        for vertice, possibilidades in enumerate(graph[duplas:]):
-            possibilidades.remove((vertice + duplas + (vertices / 2)) % vertices)
-
-    return graph
-
-def CaminhoAleatorio(graph, diagonais, depth, depthcount=0, node=0, path=[0]):
+def GrafoCaminhosAleatorios(graph, diagonais, depth, depthcount=0, node=0, path=[0]):
     """
     Aleatoriamente encontra caminhos no grafo que passam por todas as diagonais pelo uma vez
-    São possível cíclos de 3 nodes, mas não 2
+    São possíveis cíclos de 3 nodes, mas não 2
     """
     #se não existir mais nenhuma diagonal desconhecida retorna
     if diagonais == set():
@@ -81,18 +108,15 @@ def CaminhoAleatorio(graph, diagonais, depth, depthcount=0, node=0, path=[0]):
     depthcount += 1
     return CaminhoAleatorio(graph, diagonais, depth, depthcount=depthcount, node=node, path=path)
 
-vertices = 12
-parcial = False
-duplas = 2
+vertices = 8
 depth = 50
 maxfails = 5000000
-diagonais = Diagonais(vertices, parcial=parcial, duplas=duplas)
-grafo = VerticesPossibilidades(vertices, parcial=parcial, duplas=duplas)
+diagonais = Diagonais(vertices)
+grafo = GrafoPoligonos(vertices)
+GrafosCaminhaveisPoligonos(vertices, diagonais)
 
-if parcial:
-    filename = f'{vertices} vertices, parcial {parcial}, duplas {duplas}.txt'
-else:
-    filename = f'{vertices} vertices.txt'
+
+filename = f'{vertices} vertices.txt'
 pathsfound = []
 
 try:
