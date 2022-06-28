@@ -1,9 +1,10 @@
 from math import gcd
 from random import choice
+from time import perf_counter
 
 def Diagonais(vertices):
-    """
-    Gera um conjunto com todas as diagonais de um polígono
+    """Gera um conjunto com todas as diagonais de um polígono.
+
     Essa função é eficiente, não gera nenhuma possibilidade a mais
     """
     diagonais = set()
@@ -15,9 +16,9 @@ def Diagonais(vertices):
     return diagonais
 
 def DiagonaisEmCiclos(quantidadeVertices):
-    """
-    Gera todas as diagonais por ciclos, cada ciclo tem um intervalo diferente
-    {2: {0: [0, 2, 4, 0], 1: [1, 3, 5, 1]}, 3: {0: [0, 3], 1: [1, 4], 2: [2, 5]}}
+    """Gera todas as diagonais por ciclos, cada ciclo tem um intervalo diferente;
+
+    Ex: {2: {0: [0, 2, 4, 0], 1: [1, 3, 5, 1]}, 3: {0: [0, 3], 1: [1, 4], 2: [2, 5]}}
     """
     diagonais = {}
     #são necessarios ciclos de dois até diagonal divido por dois
@@ -37,42 +38,8 @@ def DiagonaisEmCiclos(quantidadeVertices):
             diagonais[gerador].setdefault(rotacao, ciclo)
     return diagonais
 
-def DiagonaisRepetidasParaGrafoCaminhavel(vertices):
-    """
-    gera um dicionario com as diagonais que devem ser repetidas para tornar o grafo das diagonais de um polígono par caminhável
-    inicio do caminho é sempre zero e no dicionario existem os fins até metade da quantidade de vértices, o que cobre todas as simetrias
-    """
-    finsErepeticoes = {}
-    listateste = []
-    #as diagonais repetidas são um subconjunto das permutações dos vértices menos o de inicio e o de fim
-    for fim in range(1, int(vertices / 2) + 1):
-        #gera lista com os vertices menos o de inicio e o de fim
-        verticeslistados = [i for i in range(vertices) if i != 0 and i != fim]
-        #gera permutações dessa lista e guarda somente as que começam no primeiro vertice
-        verticesPerm = [i for i in perm(verticeslistados) if i[0] == verticeslistados[0]]
-
-        #as permutações que formam as diagonais repetidas são as em ordem crescente a cada dois e sem sequenciais a cada um
-        RepetiçõesInicioFim = []
-        for permutacao in verticesPerm:
-            DoisEmDois = []
-            for i in range(0, len(verticeslistados) - 1, 2):
-                #se contém numeros sequencias ou se os primeiros de cada dupla não estão em ordem crescente encerra
-                if permutacao[i + 1] <= permutacao[i] + 1 or (i > 1 and permutacao[i - 2] > permutacao[i]):
-                    break
-                #divide as permutações em listas de dois em dois números
-                DoisEmDois.append(permutacao[i: i + 2])
-            else:
-                #só acrescenta se todos os numeros da permutação atenderem aos critérios
-                RepetiçõesInicioFim.append(DoisEmDois)
-        #acrescenta a um dicionario, a chave é a diagonal de fim, a de inicio é sempre 0
-        finsErepeticoes.update({fim: RepetiçõesInicioFim})
-    return finsErepeticoes
-
-
 def GrafoVerticesEDiagonais(quantidadeVertices):
-    """
-    Gera um grafo mostrando para cada vertices com quais outros vertices ele pode ser ligado para formar uma diagonal
-    """
+    """Gera um grafo mostrando para cada vertices com quais outros vertices ele pode ser ligado para formar uma diagonal."""
     grafo = []
     for vertice in range(quantidadeVertices):
         diagonaisDoVertices = []
@@ -82,9 +49,9 @@ def GrafoVerticesEDiagonais(quantidadeVertices):
     return grafo
 
 def GrafoCaminhosAleatorios(graph, diagonais, depth, depthcount=0, node=0, path=[0]):
-    """
-    Aleatoriamente encontra caminhos no grafo que passam por todas as diagonais pelo uma vez
-    São possíveis cíclos de 3 nodes, mas não 2
+    """Aleatoriamente encontra caminhos no grafo que passam por todas as diagonais pelo uma vez.
+
+    São possíveis cíclos de 3 nodesnos caminhos, mas não 2 (a função não volta diretamente para o vértice de trás).
     """
     #se não existir mais nenhuma diagonal desconhecida retorna
     if diagonais == set():
@@ -106,15 +73,50 @@ def GrafoCaminhosAleatorios(graph, diagonais, depth, depthcount=0, node=0, path=
 
     #avança para o proximo node e procura a partir dele
     depthcount += 1
-    return CaminhoAleatorio(graph, diagonais, depth, depthcount=depthcount, node=node, path=path)
+    return GrafoCaminhosAleatorios(graph, diagonais, depth, depthcount=depthcount, node=node, path=path)
 
-vertices = 8
+def DiagonaisRepetidasGrafosPares(vertices):
+    """Gera todas as possibilidades de repetir diagonais em grafos pares para que tenham caminhos eulerianos.
+
+    Os grafos pares precisam de (n-2)/2 diagonais repetidas para terem caminhos eulerianos 
+    Assume inicio no vertice 0 e muda o fim até n/2 para cada fim gera os grafos com as diagonais repetidas
+    """
+
+    def EncontraRepeticoes(verticeslistados, MontandoDiagonaisRepetidas=[], DiagonaisRepetidas=[]):
+        """Encontra recursivamente as repetições nas listas sem os vértices já utilizados.
+        """
+        for vertice in verticeslistados[1:]: #para cada vertices do segundo em diante
+            if verticeslistados[0] + 1 != vertice: #se não for adjacente com o primeiro
+                MontandoDiagonaisRepetidas.append((verticeslistados[0], vertice)) #acrescenta na lista montando
+                #repassa a lista sem os dois vertices para a funcao
+                EncontraRepeticoes([i for i in verticeslistados if i != verticeslistados[0] and i != vertice], MontandoDiagonaisRepetidas=MontandoDiagonaisRepetidas, DiagonaisRepetidas=DiagonaisRepetidas)
+                #se lista montando tiver (tamanho n -2) / 2
+                if len(MontandoDiagonaisRepetidas) == (vertices - 2) / 2:
+                    #acrescenta nas diagonais repetidas prontas
+                    DiagonaisRepetidas.append(MontandoDiagonaisRepetidas.copy())
+                #retira da lista montando a última possibilidade adicionada
+                MontandoDiagonaisRepetidas.pop()
+        return DiagonaisRepetidas
+
+    finsErepeticoes = {} #dicionario onde serão guardados todas as repetições para cada final
+    for fim in range(1, int(vertices / 2) + 1): #final até metade da quantidade de vértices
+        #gera uma lista com os vertices restantes e passa para encontrar repeticoes
+        DiagonaisRepetidas = EncontraRepeticoes([i for i in range(vertices) if i != 0 and i != fim])
+        #quarda no dicionario
+        finsErepeticoes.update({fim: DiagonaisRepetidas})
+    return finsErepeticoes
+
+#________________________________________________________________________________________________
+
+vertices = 18
 depth = 50
 maxfails = 5000000
 diagonais = Diagonais(vertices)
-grafo = GrafoPoligonos(vertices)
-GrafosCaminhaveisPoligonos(vertices, diagonais)
+grafo = GrafoVerticesEDiagonais(vertices)
 
+comrepeticoes4_time = perf_counter()
+comrepeticoes4 = DiagonaisRepetidasGrafosPares(vertices)
+comrepeticoes4_time = perf_counter() - comrepeticoes4_time
 
 filename = f'{vertices} vertices.txt'
 pathsfound = []
@@ -137,7 +139,7 @@ except FileNotFoundError:
 
 fails = 0
 while fails < maxfails:
-    newpath = CaminhoAleatorio(grafo, diagonais.copy(), depth, path=[0])
+    newpath = GrafoCaminhosAleatorios(grafo, diagonais.copy(), depth, path=[0])
     if newpath != 1 and newpath not in pathsfound:
         path = newpath
         depth = len(path) - 1
