@@ -2,16 +2,6 @@ from math import gcd
 from random import choice
 from time import perf_counter
 
-"""
-Diagonais  = {0:[]}
-DiagomaisEmCiclo =  {2:{0:[], 1:[]},3:{...}}
-DiagonaisGrafo = [[][][]]
-
-Diagonais_ComRepeticoes = {fim: [], fim: []}
-DiagonaisEmCiclo_ComRepeticoes = ?
-DiagonaisGrafo_ComRepeticoes = [[][][]]
-"""
-
 class EvenConvexPolygon:
     def __init__(self, NumberOfVertices):
         if NumberOfVertices % 2 != 0:
@@ -126,10 +116,19 @@ def GrafoCaminhosAleatorios(graph, diagonais, depth, depthcount=0, node=0, path=
     depthcount += 1
     return GrafoCaminhosAleatorios(graph, diagonais, depth, depthcount=depthcount, node=node, path=path)
 
-#________________________________________________________________________________________________
-
 convexPolygon = EvenConvexPolygon(8)
 
+#________________________________________________________________________________________________
+
+"""
+Diagonais  = {0:[]}
+DiagomaisEmCiclo =  {2:{0:[], 1:[]},3:{...}}
+DiagonaisGrafo = [[][][]]
+
+Diagonais_ComRepeticoes = {fim: [], fim: []}
+DiagonaisEmCiclo_ComRepeticoes = ?
+DiagonaisGrafo_ComRepeticoes = [[][][]]
+"""
 
 """
 vertices = 1
